@@ -5,6 +5,8 @@
 Libraries ที่ใช้: streamlit, pandas, matplotlib, seaborn
 """
 
+from pathlib import Path
+
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -21,12 +23,22 @@ st.set_page_config(
 )
 
 # --- ตั้งค่าฟอนต์ภาษาไทยสำหรับ matplotlib ---
-# หาฟอนต์ไทยที่มีในเครื่อง แล้วเลือกตัวแรกที่เจอ
-_available = [f.name for f in fm.fontManager.ttflist]
-_thai_fonts = ["Leelawadee UI", "Tahoma", "Cordia New", "Segoe UI"]
-THAI_FONT = next((f for f in _thai_fonts if f in _available), "sans-serif")
-plt.rcParams["font.family"] = THAI_FONT
-plt.rcParams["axes.unicode_minus"] = False  # แก้ปัญหาเครื่องหมายลบแสดงผิด
+# ใช้ฟอนต์ที่มากับโปรเจกต์ เพื่อให้แสดงภาษาไทยได้บน Cloud ด้วย
+APP_DIR = Path(__file__).resolve().parent
+FONT_DIR = APP_DIR / "fonts"
+for filename in ("Sarabun-Regular.ttf", "Sarabun-Bold.ttf"):
+    font_path = FONT_DIR / filename
+    if not font_path.is_file():
+        st.error(f"ไม่พบไฟล์ฟอนต์ {filename} กรุณาอัปโหลดโฟลเดอร์ fonts ไปยัง GitHub ด้วย")
+        st.stop()
+    fm.fontManager.addfont(str(font_path))
+
+THAI_FONT = fm.FontProperties(
+    fname=str(FONT_DIR / "Sarabun-Regular.ttf")
+).get_name()
+sns.set_theme(
+    style="whitegrid", font=THAI_FONT, rc={"axes.unicode_minus": False}
+)
 
 # --- CSS ปรับ UI ให้สะอาดขึ้น ---
 st.markdown("""
@@ -69,7 +81,7 @@ html, body, [class*="css"] {
 @st.cache_data  # cache ไว้ไม่ต้องโหลดใหม่ทุกครั้ง
 def load_data():
     """อ่านไฟล์ data.csv แล้ว strip ช่องว่างในคอลัมน์ข้อความ"""
-    df = pd.read_csv("data.csv", encoding="utf-8")
+    df = pd.read_csv(APP_DIR / "data.csv", encoding="utf-8")
     # ลบช่องว่างหัว-ท้ายในคอลัมน์ข้อความทุกตัว
     for col in ["region", "eco_activity", "unit", "source"]:
         df[col] = df[col].str.strip()
@@ -228,8 +240,6 @@ st.markdown("")  # เว้นบรรทัด
 # ============================================================
 # ส่วนที่ 6: กราฟและตาราง (แบ่งเป็น 4 แท็บ)
 # ============================================================
-sns.set_theme(style="whitegrid", font=THAI_FONT)
-
 tab1, tab2, tab3 = st.tabs([
     "📊 ภาพรวม",
     "🗺️ เปรียบเทียบรายภาค",
@@ -373,7 +383,7 @@ with tab2:
                 "รวมทั้งหมด (แห่ง)": "{:,.0f}",
                 "สัดส่วน (%)": "{:.2f}%",
             }).background_gradient(subset=["สัดส่วน (%)"], cmap="Blues"),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
 
